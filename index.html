@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Trivial One Piece — Local</title>
+  <link rel="stylesheet" href="styles.css" />
+  <meta name="theme-color" content="#0f172a" />
+</head>
+<body>
+  <div class="app">
+    <header class="app__header">
+      <h1>⚓ Trivial One Piece (Local)</h1>
+      <p class="sub">Juega sin conexión. No requiere instalación.</p>
+
+      <!-- Opciones visuales (opcionales) -->
+      <div class="toolbar" role="group" aria-label="Preferencias de visualización">
+        <label class="switch">
+          <input type="checkbox" id="toggle-contrast" />
+          <span>Alto contraste</span>
+        </label>
+
+        <label class="switch">
+          <span class="sr-only">Tema</span>
+          <select id="select-theme" class="input small" aria-label="Tema">
+            <option value="auto">Tema: Automático</option>
+            <option value="dark">Tema: Oscuro</option>
+            <option value="light">Tema: Claro</option>
+          </select>
+        </label>
+      </div>
+    </header>
+
+    <!-- Pantalla: Inicio -->
+    <section id="screen-home" class="screen active">
+      <div class="card">
+        <label class="label" for="input-name">Tu nombre (opcional)</label>
+        <input id="input-name" class="input" type="text" maxlength="18" placeholder="Ej: Jose" />
+
+        <div class="row">
+          <div class="col">
+            <label class="label">Nº de preguntas</label>
+            <select id="select-count" class="input" aria-label="Número de preguntas">
+              <option value="10">10</option>
+              <option value="15" selected>15</option>
+              <option value="20">20</option>
+              <option value="25">25</option>
+              <option value="30">30</option>
+            </select>
+          </div>
+          <div class="col">
+            <label class="label">Tiempo por pregunta</label>
+            <select id="select-seconds" class="input" aria-label="Tiempo por pregunta">
+              <option value="10">10s</option>
+              <option value="15" selected>15s</option>
+              <option value="20">20s</option>
+              <option value="30">30s</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="row">
+          <button id="btn-start" class="btn primary" aria-label="Empezar partida">¡Empezar!</button>
+        </div>
+
+        <p class="hint">Puntuación: 1000 pts + bonus por rapidez (hasta +500).</p>
+      </div>
+
+      <div class="card">
+        <h3>🏆 Mejores puntuaciones (este dispositivo)</h3>
+        <ol id="highscores" class="leaderboard"></ol>
+        <button id="btn-clear-hs" class="btn danger">Borrar récords</button>
+      </div>
+    </section>
+
+    <!-- Pantalla: Juego -->
+    <section id="screen-game" class="screen">
+      <div class="card">
+        <div class="row between">
+          <div>
+            <h2 id="label-qtitle">Pregunta</h2>
+            <p id="label-qprogress" class="muted"></p>
+          </div>
+          <div class="timer" aria-label="Tiempo restante">
+            <div id="timer-bar" class="timer__bar" aria-hidden="true"></div>
+            <span id="timer-label" class="timer__label" aria-live="polite">15s</span>
+          </div>
+        </div>
+
+        <p id="label-question" class="question"></p>
+        <img id="q-image" class="q-image hidden" alt="Imagen de la pregunta" />
+
+        <div id="options" class="options"></div>
+
+        <div id="after-round" class="after hidden">
+          <p id="label-correct" class="correct"></p>
+          <p id="label-expl" class="explanation"></p>
+          <button id="btn-next" class="btn">Siguiente</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Marcador</h3>
+        <div class="row between">
+          <p id="label-name" class="muted"></p>
+          <p id="label-score"><strong>0 pts</strong></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Pantalla: Final -->
+    <section id="screen-end" class="screen">
+      <div class="card">
+        <h2>🏁 ¡Fin de la partida!</h2>
+        <p id="final-summary" class="muted"></p>
+        <h3>Resultados</h3>
+        <ol id="final-breakdown" class="scoreboard"></ol>
+        <div class="row">
+          <button id="btn-retry" class="btn primary">Jugar de nuevo</button>
+          <button id="btn-home" class="btn">Volver al inicio</button>
+        </div>
+      </div>
+    </section>
+
+    <footer class="app__footer">
+      <span>Hecho con ❤️ para fans de One Piece · Local/Offline</span>
+    </footer>
+  </div>
+
+  <!-- IMPORTANTE: primero el banco de preguntas, luego la lógica -->
+  <script src="questions.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
