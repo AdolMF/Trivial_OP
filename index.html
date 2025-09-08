@@ -3,77 +3,69 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Trivial One Piece — Local</title>
+  <title>Triviadol</title>
   <link rel="stylesheet" href="styles.css" />
   <meta name="theme-color" content="#0f172a" />
 </head>
 <body>
   <div class="app">
     <header class="app__header">
-      <h1>⚓ Trivial One Piece (Local)</h1>
-      <p class="sub">Juega sin conexión. No requiere instalación.</p>
+      <h1>⚓ Bienvenido a Triviadol</h1>
+      <p class="sub">Elige tu modo y demuestra lo que sabes</p>
 
-      <!-- Opciones visuales (opcionales) -->
-      <div class="toolbar" role="group" aria-label="Preferencias de visualización">
+      <div class="toolbar">
         <label class="switch">
           <input type="checkbox" id="toggle-contrast" />
           <span>Alto contraste</span>
         </label>
 
         <label class="switch">
-          <span class="sr-only">Tema</span>
-          <select id="select-theme" class="input small" aria-label="Tema">
+          <select id="select-theme" class="input small">
             <option value="auto">Tema: Automático</option>
             <option value="dark">Tema: Oscuro</option>
             <option value="light">Tema: Claro</option>
           </select>
         </label>
+
+        <label class="switch">
+          <select id="select-mode" class="input small">
+            <option value="one-piece">One Piece</option>
+            <option value="rap-espanol">Rap Español</option>
+            <option value="telecinco">Telecirco</option>
+            <option value="futbol-espanol">Futbol Español</option>
+          </select>
+        </label>
       </div>
     </header>
 
-    <!-- Pantalla: Inicio -->
+    <!-- Pantalla Inicio -->
     <section id="screen-home" class="screen active">
       <div class="card">
         <label class="label" for="input-name">Tu nombre (opcional)</label>
-        <input id="input-name" class="input" type="text" maxlength="18" placeholder="Ej: Jose" />
+        <input id="input-name" class="input" type="text" maxlength="18" placeholder="Ej: Adol" />
 
         <div class="row">
-          <div class="col">
-            <label class="label">Nº de preguntas</label>
-            <select id="select-count" class="input" aria-label="Número de preguntas">
-              <option value="10">10</option>
-              <option value="15" selected>15</option>
-              <option value="20">20</option>
-              <option value="25">25</option>
-              <option value="30">30</option>
-            </select>
-          </div>
-          <div class="col">
-            <label class="label">Tiempo por pregunta</label>
-            <select id="select-seconds" class="input" aria-label="Tiempo por pregunta">
-              <option value="10">10s</option>
-              <option value="15" selected>15s</option>
-              <option value="20">20s</option>
-              <option value="30">30s</option>
-            </select>
-          </div>
+          <button id="btn-start" class="btn primary">¡Empezar!</button>
         </div>
 
-        <div class="row">
-          <button id="btn-start" class="btn primary" aria-label="Empezar partida">¡Empezar!</button>
-        </div>
-
-        <p class="hint">Puntuación: 1000 pts + bonus por rapidez (hasta +500).</p>
+        <p class="hint">15 preguntas · 10 segundos por pregunta</p>
       </div>
 
       <div class="card">
-        <h3>🏆 Mejores puntuaciones (este dispositivo)</h3>
+        <h3>🏆 Puntuaciones de Triviadol</h3>
+        <label for="select-hs-mode" class="label">Ver récords de:</label>
+        <select id="select-hs-mode" class="input small">
+          <option value="one-piece">One Piece</option>
+          <option value="rap-espanol">Rap Español</option>
+          <option value="telecinco">Telecirco</option>
+          <option value="futbol-espanol">Futbol Español</option>
+        </select>
         <ol id="highscores" class="leaderboard"></ol>
         <button id="btn-clear-hs" class="btn danger">Borrar récords</button>
       </div>
     </section>
 
-    <!-- Pantalla: Juego -->
+    <!-- Pantalla Juego -->
     <section id="screen-game" class="screen">
       <div class="card">
         <div class="row between">
@@ -81,9 +73,9 @@
             <h2 id="label-qtitle">Pregunta</h2>
             <p id="label-qprogress" class="muted"></p>
           </div>
-          <div class="timer" aria-label="Tiempo restante">
-            <div id="timer-bar" class="timer__bar" aria-hidden="true"></div>
-            <span id="timer-label" class="timer__label" aria-live="polite">15s</span>
+          <div class="timer">
+            <div id="timer-bar" class="timer__bar"></div>
+            <span id="timer-label" class="timer__label">10s</span>
           </div>
         </div>
 
@@ -108,10 +100,10 @@
       </div>
     </section>
 
-    <!-- Pantalla: Final -->
+    <!-- Pantalla Final -->
     <section id="screen-end" class="screen">
       <div class="card">
-        <h2>🏁 ¡Fin de la partida!</h2>
+        <h2>🏁 ¡Fin de la partida en Triviadol!</h2>
         <p id="final-summary" class="muted"></p>
         <h3>Resultados</h3>
         <ol id="final-breakdown" class="scoreboard"></ol>
@@ -123,12 +115,17 @@
     </section>
 
     <footer class="app__footer">
-      <span>Hecho con ❤️ para fans de One Piece · Local/Offline</span>
+      <span>Triviadol · Juega en local o en GitHub Pages</span>
     </footer>
   </div>
 
-  <!-- IMPORTANTE: primero el banco de preguntas, luego la lógica -->
-  <script src="questions.js"></script>
+  <!-- Bancos de preguntas -->
+  <script src="modes/one-piece.js"></script>
+  <script src="modes/rap-espanol.js"></script>
+  <script src="modes/telecinco.js"></script>
+  <script src="modes/futbol-espanol.js"></script>
+
+  <!-- Lógica -->
   <script src="app.js"></script>
 </body>
 </html>

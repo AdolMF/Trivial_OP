@@ -1,11 +1,8 @@
-// Trivial One Piece - Local/Offline
-// Usa window.QUESTIONS desde questions.js
-
 (() => {
   "use strict";
 
-  const $ = (sel) => document.querySelector(sel);
-  const $$ = (sel) => Array.from(document.querySelectorAll(sel));
+  const $ = (s) => document.querySelector(s);
+  const $$ = (s) => Array.from(document.querySelectorAll(s));
   const shuffle = (arr) => {
     const a = arr.slice();
     for (let i = a.length - 1; i > 0; i--) {
@@ -14,12 +11,57 @@
     }
     return a;
   };
-  const fmtSecs = (msLeft) => Math.max(0, Math.ceil(msLeft / 1000)) + "s";
 
+  /* =========================
+     Preferencias visuales
+     ========================= */
+  const THEME_KEY = "triviadol_theme_v1";        // 'auto' | 'dark' | 'light'
+  const CONTRAST_KEY = "triviadol_contrast_v1";  // 'normal' | 'high'
+  const root = document.documentElement;
+  const mmDark = window.matchMedia?.("(prefers-color-scheme: dark)");
+
+  function applyTheme(mode) {
+    // 'dark' -> data-theme="dark"; 'light' -> data-theme="light"; 'auto' -> sin atributo
+    if (mode === "dark") {
+      root.setAttribute("data-theme", "dark");
+    } else if (mode === "light") {
+      root.setAttribute("data-theme", "light");
+    } else {
+      root.removeAttribute("data-theme");
+    }
+    localStorage.setItem(THEME_KEY, mode);
+    const sel = $("#select-theme");
+    if (sel) sel.value = mode;
+  }
+
+  function applyContrast(level) {
+    if (level === "high") root.setAttribute("data-contrast", "high");
+    else root.removeAttribute("data-contrast");
+    localStorage.setItem(CONTRAST_KEY, level);
+    const chk = $("#toggle-contrast");
+    if (chk) chk.checked = level === "high";
+  }
+
+  function loadPrefs() {
+    applyTheme(localStorage.getItem(THEME_KEY) || "auto");
+    applyContrast(localStorage.getItem(CONTRAST_KEY) || "normal");
+  }
+
+  // Si el usuario está en 'auto', reaccionar a cambios del sistema
+  mmDark?.addEventListener?.("change", () => {
+    if ((localStorage.getItem(THEME_KEY) || "auto") === "auto") {
+      applyTheme("auto");
+    }
+  });
+
+  /* =========================
+     Estado del juego (recortado a lo relevante del tema)
+     ========================= */
   const state = {
     name: "",
+    mode: "one-piece",
     total: 15,
-    durationMs: 15000,
+    durationMs: 10000,
     order: [],
     idx: -1,
     current: null,
@@ -29,44 +71,55 @@
     locked: false,
     score: 0,
     breakdown: [],
-    optionMap: [] // índice de botón -> índice original
+    optionMap: []
   };
 
-  const HS_KEY = "optrivial_highscores_v1";
-  function getHS(){ try{ return JSON.parse(localStorage.getItem(HS_KEY)||"[]"); }catch{ return []; } }
-  function setHS(list){ localStorage.setItem(HS_KEY, JSON.stringify(list.slice(0,10))); }
-  function renderHS(){
-    const list = $("#highscores"); if(!list) return;
-    const hs = getHS(); list.innerHTML="";
-    if (hs.length===0){ const li=document.createElement("li"); li.className="muted"; li.textContent="Sin récords todavía."; list.appendChild(li); return; }
-    hs.forEach((r,i)=>{ const li=document.createElement("li"); li.innerHTML=`<span>#${i+1}. ${escapeHtml(r.name||"Jugador")}</span><strong>${r.score} pts</strong>`; list.appendChild(li); });
-  }
-
-  function startGame(){
-    if (!Array.isArray(window.QUESTIONS) || window.QUESTIONS.length===0) {
-      alert("No se cargó el banco de preguntas (questions.js).");
+  // --- Highscores ---
+  function keyHS(mode) { return `triviadol_scores_${mode}`; }
+  function getHS(mode) { try { return JSON.parse(localStorage.getItem(keyHS(mode)) || "[]"); } catch { return []; } }
+  function setHS(mode, list) { localStorage.setItem(keyHS(mode), JSON.stringify(list.slice(0, 10))); }
+  function renderHS() {
+    const mode = $("#select-hs-mode").value;
+    const list = $("#highscores");
+    list.innerHTML = "";
+    const hs = getHS(mode);
+    if (hs.length === 0) {
+      const li = document.createElement("li");
+      li.className = "muted";
+      li.textContent = "Sin récords todavía.";
+      list.appendChild(li);
       return;
     }
-    const QUESTIONS = window.QUESTIONS;
+    hs.forEach((r, i) => {
+      const li = document.createElement("li");
+      li.innerHTML = `<span>#${i + 1}. ${r.name || "Jugador"}</span><strong>${r.score} pts</strong>`;
+      list.appendChild(li);
+    });
+  }
 
-    state.name = ($("#input-name")?.value||"").trim();
-    state.total = Number($("#select-count")?.value||15);
-    state.durationMs = Number($("#select-seconds")?.value||15)*1000;
-    state.score = 0; state.breakdown=[];
-
-    const limit = Math.min(state.total, QUESTIONS.length);
-    state.order = shuffle([...Array(QUESTIONS.length).keys()]).slice(0, limit);
+  // --- Flujo del juego (sin cambios respecto a preguntas) ---
+  function startGame() {
+    const bank = (window.TRIVIADOL_BANKS || {})[state.mode];
+    if (!bank || bank.length < state.total) {
+      alert("Este modo no tiene suficientes preguntas todavía.");
+      return;
+    }
+    state.name = ($("#input-name")?.value || "").trim();
+    state.score = 0;
+    state.breakdown = [];
+    state.order = shuffle([...Array(bank.length).keys()]).slice(0, state.total);
     state.idx = -1;
 
     $("#label-name").textContent = state.name ? `Jugador: ${state.name}` : "";
     $("#label-score").innerHTML = `<strong>0 pts</strong>`;
 
     show("#screen-game");
-    nextQuestion(QUESTIONS);
+    nextQuestion();
   }
 
-  function nextQuestion(QUESTIONS = window.QUESTIONS){
-    state.idx += 1;
+  function nextQuestion() {
+    const bank = (window.TRIVIADOL_BANKS || {})[state.mode];
+    state.idx++;
     if (state.idx >= state.order.length) return endGame();
 
     $("#after-round").classList.add("hidden");
@@ -76,25 +129,25 @@
     state.locked = false;
 
     const qIndex = state.order[state.idx];
-    state.current = QUESTIONS[qIndex];
+    state.current = bank[qIndex];
 
     $("#label-qtitle").textContent = `Pregunta ${state.idx + 1}`;
     $("#label-qprogress").textContent = `de ${state.order.length}`;
     $("#label-question").textContent = state.current.question;
 
     const img = $("#q-image");
-    if (state.current.image){ img.src = state.current.image; img.classList.remove("hidden"); }
+    if (state.current.image) { img.src = state.current.image; img.classList.remove("hidden"); }
     else { img.classList.add("hidden"); }
 
-    // Barajar respuestas y guardar mapa DOM->índice original
-    const opts = $("#options"); opts.innerHTML = "";
-    const shuffled = shuffle(state.current.options.map((text, idx)=>({text, idx})));
-    state.optionMap = shuffled.map(o => o.idx);
-    shuffled.forEach(({text, idx})=>{
+    const opts = $("#options");
+    opts.innerHTML = "";
+    const shuffled = shuffle(state.current.options.map((text, idx) => ({ text, idx })));
+    state.optionMap = shuffled.map((o) => o.idx);
+    shuffled.forEach(({ text, idx }) => {
       const b = document.createElement("button");
       b.className = "option";
       b.textContent = text;
-      b.addEventListener("click", ()=>selectAnswer(idx, b));
+      b.addEventListener("click", () => selectAnswer(idx, b));
       opts.appendChild(b);
     });
 
@@ -103,19 +156,19 @@
     startTimer();
   }
 
-  function selectAnswer(originalIdx, btn){
+  function selectAnswer(originalIdx, btn) {
     if (state.locked) return;
     state.locked = true;
 
-    $$(".option").forEach(b=>b.classList.add("locked"));
+    $$(".option").forEach((b) => b.classList.add("locked"));
     btn?.classList.remove("locked");
 
-    const elapsed = Math.max(0, Math.min(state.durationMs, Date.now()-state.currentStart));
+    const elapsed = Math.max(0, Math.min(state.durationMs, Date.now() - state.currentStart));
     const isCorrect = originalIdx === state.current.answer;
     let delta = 0;
-    if (isCorrect){
-      const base=1000, maxBonus=500;
-      const bonus = Math.round(maxBonus * (1 - elapsed/state.durationMs));
+    if (isCorrect) {
+      const base = 1000, maxBonus = 500;
+      const bonus = Math.round(maxBonus * (1 - elapsed / state.durationMs));
       delta = base + bonus;
       state.score += delta;
     }
@@ -130,63 +183,66 @@
     });
   }
 
-  function revealSolution(myOriginalIdx, delta){
+  function revealSolution(myOriginalIdx, delta) {
     stopTimer();
-    const correctOriginalIdx = state.current.answer;
-
-    // Pintar correcto/incorrecto respetando el barajado
-    $$(".option").forEach((b, domIdx)=>{
+    const correctIdx = state.current.answer;
+    $$(".option").forEach((b, domIdx) => {
       const originalIdx = state.optionMap[domIdx];
-      if (originalIdx === correctOriginalIdx) b.classList.add("correct");
+      if (originalIdx === correctIdx) b.classList.add("correct");
       else if (originalIdx === myOriginalIdx) b.classList.add("wrong");
     });
 
-    $("#label-correct").textContent = `Respuesta correcta: ${state.current.options[correctOriginalIdx]} ${delta>0?`(+${delta} pts)`:"(0 pts)"}`;
-    $("#label-expl").textContent = state.current.explanation || "";
+    $("#label-correct").textContent =
+      `Respuesta correcta: ${state.current.options[correctIdx]} ${delta > 0 ? `(+${delta} pts)` : "(0 pts)"}`;
     $("#btn-next").disabled = false;
     $("#after-round").classList.remove("hidden");
     $("#label-score").innerHTML = `<strong>${state.score} pts</strong>`;
   }
 
-  function endGame(){
+  function endGame() {
     show("#screen-end");
-    $("#final-summary").textContent = `${state.name || "Jugador"} · ${state.score} pts · ${state.order.length} preguntas`;
+    $("#final-summary").textContent =
+      `${state.name || "Jugador"} · ${state.score} pts · ${state.order.length} preguntas (${state.mode})`;
 
     const list = $("#final-breakdown");
     list.innerHTML = "";
-    const QUESTIONS = window.QUESTIONS;
-    state.breakdown.forEach((r,i)=>{
-      const q = QUESTIONS.find(q=>q.question===r.q) || state.current;
-      const correct = q.options[r.correctIndex];
-      const mine = q.options[r.myIndex] ?? "Sin respuesta";
+    state.breakdown.forEach((r, i) => {
+      const correct = state.current.options[r.correctIndex];
+      const mine = state.current.options[r.myIndex] ?? "Sin respuesta";
       const li = document.createElement("li");
-      li.innerHTML = `<span>#${i+1}. ${escapeHtml(r.q)}</span><span>${r.delta} pts</span>`;
+      li.innerHTML = `<span>#${i + 1}. ${r.q}</span><span>${r.delta} pts</span>`;
       const sub = document.createElement("div");
-      sub.className="muted"; sub.style.marginTop="4px";
+      sub.className = "muted";
       sub.textContent = `Tu respuesta: ${mine} · Correcta: ${correct}`;
-      li.appendChild(sub); list.appendChild(li);
+      li.appendChild(sub);
+      list.appendChild(li);
     });
 
-    const hs = getHS(); hs.push({ name: state.name||"Jugador", score: state.score, at: Date.now() });
-    hs.sort((a,b)=>b.score-a.score); setHS(hs); renderHS();
+    const hs = getHS(state.mode);
+    hs.push({ name: state.name || "Jugador", score: state.score, at: Date.now() });
+    hs.sort((a, b) => b.score - a.score);
+    setHS(state.mode, hs);
+    renderHS();
   }
 
-  function startTimer(){
-    const totalMs = Math.max(0, state.currentEnds - Date.now());
-    const bar = $("#timer-bar"); const label = $("#timer-label");
+  // --- Timer ---
+  function startTimer() {
+    const totalMs = state.durationMs;
+    const bar = $("#timer-bar");
+    const label = $("#timer-label");
     cancelAnimationFrame(state.timerRAF);
 
-    function frame(){
+    function frame() {
       const left = state.currentEnds - Date.now();
-      const ratio = Math.max(0, Math.min(1, left/totalMs));
-      bar.style.transform = `scaleX(${Number.isFinite(ratio)?ratio:0})`;
-      label.textContent = fmtSecs(left);
-      if (left <= 0){
+      const ratio = Math.max(0, Math.min(1, left / totalMs));
+      bar.style.transform = `scaleX(${ratio})`;
+      label.textContent = Math.max(0, Math.ceil(left / 1000)) + "s";
+      if (left <= 0) {
         cancelAnimationFrame(state.timerRAF);
-        if (!state.locked){
+        if (!state.locked) {
           state.locked = true;
           revealSolution(-1, 0);
-          state.breakdown.push({ q: state.current.question, correctIndex: state.current.answer, myIndex: -1, delta:0 });
+          state.breakdown.push({ q: state.current.question, correctIndex: state.current.answer, myIndex: -1, delta: 0 });
         }
         return;
       }
@@ -194,22 +250,41 @@
     }
     frame();
   }
-  function stopTimer(){ cancelAnimationFrame(state.timerRAF); }
+  function stopTimer() { cancelAnimationFrame(state.timerRAF); }
 
-  function escapeHtml(s){
-    return String(s).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;");
-  }
-  function show(id){
-    $$("#screen-home, #screen-game, #screen-end").forEach(el=>el.classList.remove("active"));
+  function show(id) {
+    $$("#screen-home, #screen-game, #screen-end").forEach((el) => el.classList.remove("active"));
     $(id).classList.add("active");
   }
 
-  window.addEventListener("DOMContentLoaded", ()=>{
+  /* =========================
+     INIT
+     ========================= */
+  window.addEventListener("DOMContentLoaded", () => {
+    // Preferencias visuales
+    loadPrefs();
+    $("#select-theme")?.addEventListener("change", (e) => applyTheme(e.target.value));
+    $("#toggle-contrast")?.addEventListener("change", (e) => applyContrast(e.target.checked ? "high" : "normal"));
+
+    // Juego
     $("#btn-start")?.addEventListener("click", startGame);
-    $("#btn-next")?.addEventListener("click", ()=>nextQuestion());
-    $("#btn-retry")?.addEventListener("click", ()=>show("#screen-home"));
-    $("#btn-home")?.addEventListener("click", ()=>show("#screen-home"));
-    $("#btn-clear-hs")?.addEventListener("click", ()=>{ localStorage.removeItem(HS_KEY); renderHS(); });
+    $("#btn-next")?.addEventListener("click", nextQuestion);
+    $("#btn-retry")?.addEventListener("click", () => show("#screen-home"));
+    $("#btn-home")?.addEventListener("click", () => show("#screen-home"));
+    $("#btn-clear-hs")?.addEventListener("click", () => {
+      localStorage.removeItem(`triviadol_scores_${$("#select-hs-mode").value}`);
+      renderHS();
+    });
+
+    $("#select-mode")?.addEventListener("change", (e) => {
+      if (state.idx === -1 || state.idx >= state.order.length) {
+        state.mode = e.target.value;
+      } else {
+        e.target.value = state.mode; // no cambiar si hay partida en curso
+      }
+    });
+
+    $("#select-hs-mode")?.addEventListener("change", renderHS);
     renderHS();
   });
 })();
